@@ -1,42 +1,103 @@
-import { View, Text, StyleSheet } from "react-native";
+import { useEffect, useState } from "react";
+import { StyleSheet, Text, ActivityIndicator, View, ScrollView } from "react-native";
 import ScreenContainer from "../components/ScreenContainer";
+import { apiGet } from "../api";
+
+interface Metric {
+  id: number;
+  date: string;
+  weight: number;
+  body_fat: number;
+  notes: string;
+}
 
 export default function ProgressScreen() {
+  const [metrics, setMetrics] = useState<Metric[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadMetrics() {
+      try {
+        const data = await apiGet("/metrics/1");
+        setMetrics(data);
+      } catch (err) {
+        console.error("Error cargando métricas:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadMetrics();
+  }, []);
+
+  if (loading) {
+    return (
+      <ScreenContainer>
+        <ActivityIndicator size="large" color="#BE185D" />
+        <Text style={{ marginTop: 12, color: "#7E22CE" }}>
+          Cargando tus métricas...
+        </Text>
+      </ScreenContainer>
+    );
+  }
+
   return (
     <ScreenContainer>
-    <View style={styles.container}>
       <Text style={styles.title}>Tu progreso</Text>
-      <Text style={styles.text}>
-        Aquí vas a ver tus métricas de peso, porcentaje de grasa, anotaciones y evolución.
-      </Text>
-      <Text style={styles.placeholder}>
-        (Más adelante conectamos esta pantalla a la API de métricas.)
-      </Text>
-    </View>
+
+      <ScrollView style={{ marginTop: 16 }}>
+        {metrics.map((m) => (
+          <View key={m.id} style={styles.card}>
+            <Text style={styles.date}>{m.date}</Text>
+
+            <Text style={styles.metric}>
+              Peso: <Text style={styles.value}>{m.weight} kg</Text>
+            </Text>
+
+            <Text style={styles.metric}>
+              Grasa corporal: <Text style={styles.value}>{m.body_fat}%</Text>
+            </Text>
+
+            {m.notes ? (
+              <Text style={styles.notes}>Notas: {m.notes}</Text>
+            ) : null}
+          </View>
+        ))}
+      </ScrollView>
     </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#FDF2F8",
-    padding: 20,
-  },
   title: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: "700",
     color: "#BE185D",
-    marginBottom: 12,
   },
-  text: {
+  card: {
+    backgroundColor: "white",
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 14,
+  },
+  date: {
     fontSize: 14,
+    fontWeight: "600",
+    color: "#7E22CE",
+    marginBottom: 8,
+  },
+  metric: {
+    fontSize: 15,
+    marginBottom: 4,
     color: "#4B5563",
   },
-  placeholder: {
-    marginTop: 16,
-    fontSize: 13,
-    color: "#9CA3AF",
+  value: {
+    fontWeight: "700",
+    color: "#BE185D",
+  },
+  notes: {
+    marginTop: 6,
     fontStyle: "italic",
+    color: "#6B7280",
   },
 });
