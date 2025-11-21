@@ -35,6 +35,22 @@ app.get('/metrics/:userId', (req, res) => {
     }
   );
 });
+// --- Calendario de eventos ---
+app.get('/calendar/:userId', (req, res) => {
+  const { userId } = req.params;
+
+  db.all(
+    'SELECT id, date, title, type FROM calendar_events WHERE user_id = ? ORDER BY date ASC',
+    [userId],
+    (err, rows) => {
+      if (err) {
+        console.error(err);
+        return res.status(500).json({ error: 'Error en la base de datos' });
+      }
+      res.json(rows);
+    }
+  );
+});
 
 // --- Plan nutricional (usuario 1) ---
 app.get('/plan/:userId', (req, res) => {
@@ -53,6 +69,76 @@ app.get('/plan/:userId', (req, res) => {
       res.json(row);
     }
   );
+});
+// --- Crear orden (carrito → orden) ---
+app.post('/orders', (req, res) => {
+  const { userId, items } = req.body;
+
+  // Validaciones básicas
+  if (!userId || !Array.isArray(items) || items.length === 0) {
+    return res
+      .status(400)
+      .json({ error: 'userId e items (productId, quantity) son requeridos' });
+  }
+
+  // Obtenemos precios de los productos
+  const productIds = items.map((it) => it.productId);
+  const placeholders = productIds.map(() => '?').join(',');
+  const sql = `SELECT id, price FROM products WHERE id IN (${placeholders})`;
+
+  db.all(sql, productIds, (err, products) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ error: 'Error en la base de datos' });
+    }
+
+    if (!products.length) {
+      return res.status(400).json({ error: 'Productos no encontrados' });
+    }
+
+    const priceMap = new Map(products.map((p) => [p.id, p.price]));
+
+    let total = 0;
+    for (const item of items) {
+      const price = priceMap.get(item.productId);
+      if (!price) {
+        return res
+          .status(400)
+          .json({ error: `Producto inexistente: ${item.productId}` });
+      }
+      total += price * item.quantity;
+    }
+
+    // Creamos la orden
+    db.run(
+      'INSERT INTO orders (user_id, status, total) VALUES (?, ?, ?)',
+      [userId, 'created', total],
+      function (err2) {
+        if (err2) {
+          console.error(err2);
+          return res.status(500).json({ error: 'Error creando la orden' });
+        }
+
+        const orderId = this.lastID;
+
+        // Insertar items
+        const stmt = db.prepare(
+          'INSERT INTO order_items (order_id, product_id, quantity, unit_price) VALUES (?, ?, ?, ?)'
+        );
+        for (const item of items) {
+          const price = priceMap.get(item.productId);
+          stmt.run(orderId, item.productId, item.quantity, price);
+        }
+        stmt.finalize();
+
+        res.status(201).json({
+          orderId,
+          status: 'created',
+          total,
+        });
+      }
+    );
+  });
 });
 
 // --- Chat con Gemini (lo dejaremos listo pero luego lo probamos) ---
@@ -100,4 +186,18 @@ app.post('/chat', async (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`API Dra Laura escuchando en http://localhost:${PORT}`);
+});
+// --- Productos (tienda) ---
+app.get('/products', (req, res) => {
+  db.all(
+    'SELECT id, name, description, price, image_url FROM products',
+    [],
+    (err, rows) => {
+      if (err) {
+        console.error(err);
+        return res.status(500).json({ error: 'Error en la base de datos' });
+      }
+      res.json(rows);
+    }
+  );
 });

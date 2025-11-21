@@ -20,7 +20,6 @@ export default function App() {
             headerShown: false,
           }}
         >
-          <Tab.Screen name="Inicio" component={HomeScreen} />
           <Tab.Screen name="Plan" component={PlanScreen} />
           <Tab.Screen name="Progreso" component={ProgressScreen} />
           <Tab.Screen name="Calendario" component={CalendarScreen} />

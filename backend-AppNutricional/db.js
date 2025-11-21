@@ -102,6 +102,31 @@ db.serialize(() => {
       'Desayuno: avena con frutas y proteína.\nAlmuerzo: proteína magra + vegetales.\nCena: ligera, alta en fibra.'
     )
   `);
+
+  // Datos demo métricas
+  db.run(`
+    INSERT OR IGNORE INTO metrics (id, user_id, date, weight, body_fat, notes)
+    VALUES
+      (1, 1, '2025-11-15', 72.5, 24.0, 'Inicio del tratamiento'),
+      (2, 1, '2025-11-18', 71.8, 23.5, 'Buena adherencia al plan')
+  `);
+
+  // Datos demo calendario
+  db.run(`
+    INSERT OR IGNORE INTO calendar_events (id, user_id, date, title, type)
+    VALUES
+      (1, 1, '2025-11-21', 'Control nutricional', 'control'),
+      (2, 1, '2025-11-28', 'Seguimiento semanal', 'seguimiento')
+  `);
+
+  // Datos demo productos
+  db.run(`
+    INSERT OR IGNORE INTO products (id, name, description, price, image_url)
+    VALUES
+      (1, 'Omega 3 Premium', 'Suplemento de omega-3 de alta pureza.', 80.0, 'https://picsum.photos/200'),
+      (2, 'Multivitamínico Mujer', 'Formulación específica para mujeres activas.', 65.0, 'https://picsum.photos/201'),
+      (3, 'Proteína Vegetal', 'Proteína a base de plantas, sabor vainilla.', 95.0, 'https://picsum.photos/202')
+  `);
 });
 
 module.exports = db;
